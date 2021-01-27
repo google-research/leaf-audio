@@ -105,7 +105,8 @@ class GaussianLowpass(tf.keras.layers.Layer):
   """Depthwise pooling (each input filter has its own pooling filter).
 
   Pooling filters are parametrized as zero-mean Gaussians, with learnable
-  std. They are initialized with sigma=0.4 to approximate a Hanning window.
+  std. They can be initialized with tf.keras.initializers.Constant(0.4)
+  to approximate a Hanning window.
   We rely on depthwise_conv2d as there is no depthwise_conv1d in Keras so far.
   """
 
@@ -118,7 +119,6 @@ class GaussianLowpass(tf.keras.layers.Layer):
       kernel_initializer='glorot_uniform',
       kernel_regularizer=None,
       trainable=False,
-      sigma_init=0.4,
   ):
 
     super().__init__(name='learnable_pooling')
@@ -129,13 +129,12 @@ class GaussianLowpass(tf.keras.layers.Layer):
     self.kernel_initializer = kernel_initializer
     self.kernel_regularizer = kernel_regularizer
     self.trainable = trainable
-    self._sigma_init = sigma_init
 
   def build(self, input_shape):
     self.kernel = self.add_weight(
         name='kernel',
         shape=(1, 1, input_shape[2], 1),
-        initializer=tf.keras.initializers.Constant(self._sigma_init),
+        initializer=self.kernel_initializer,
         regularizer=self.kernel_regularizer,
         trainable=self.trainable)
 

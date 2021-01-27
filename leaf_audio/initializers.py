@@ -22,6 +22,9 @@ from leaf_audio import utils
 import numpy as np
 import tensorflow.compat.v2 as tf
 
+gin.external_configurable(tf.keras.initializers.Constant,
+                          module='tf.keras.initializers')
+
 
 @gin.configurable
 class PreempInit(tf.keras.initializers.Initializer):
