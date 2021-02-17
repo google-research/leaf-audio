@@ -71,16 +71,15 @@ class GaborInit(tf.keras.initializers.Initializer):
   def __call__(self, shape, dtype=None):
     gabor_filters = melfilters.Gabor(**self._kwargs)
     if len(shape) == 2:
-      return tf.cast(
-          tf.stack([gabor_filters.center_frequencies, gabor_filters.fwhms],
-                   axis=1),
-          dtype=dtype)
+      return gabor_filters.gabor_params_from_mels
     else:
-      gabor_arr = np.zeros(shape)
-      for idx, gabor in enumerate(gabor_filters.gabor_filters):
-        gabor_arr[:, 0, 2 * idx] = np.real(gabor)
-        gabor_arr[:, 0, 2 * idx + 1] = np.imag(gabor)
-      return tf.convert_to_tensor(gabor_arr, dtype=dtype)
+      even_indices = tf.range(shape[2], delta=2)
+      odd_indices = tf.range(start=1, limit=shape[2], delta=2)
+      filters = gabor_filters.gabor_filters
+      filters_real_and_imag = tf.dynamic_stitch(
+          [even_indices, odd_indices],
+          [tf.math.real(filters), tf.math.imag(filters)])
+      return tf.transpose(filters_real_and_imag[:, tf.newaxis, :], [2, 1, 0])
 
   def get_config(self):
     return self._kwargs

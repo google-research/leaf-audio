@@ -14,47 +14,11 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Utility functions for time-domain filterbanks.
-
-chirp(f0, f1, tmax, sample_rate) creates a chirp: a signal with linearly growing
-frequency.
-f0 is the lower bound of the frequency range, in Hz
-f1 is the upper bound of the frequency range, in Hz
-tmax is the duration of the chirp, in seconds
-sample_rate is the sampling rate
-
-window(window_type, tmax) creates a window of type window_type and duration
-tmax.
-Currently, hanning (also known as Hann) and hamming windows are available.
-"""
+"""Utility functions for LEAF."""
 
 import enum
 import gin
 import numpy as np
-
-
-def chirp(f0: float, f1: float, tmax: float, sample_rate: int):
-  """Chirp function.
-
-  Creates a chirp: a signal with linearly growing frequency.
-
-  Args:
-    f0: the lower bound of the frequency range, in Hz
-    f1: the upper bound of the frequency range, in Hz
-    tmax: the duration of the chirp, in seconds
-    sample_rate:  the sampling rate
-
-  Returns:
-    a list containing the values of the chirp along time
-  """
-  slope = (f1 - f0) / float(tmax)
-
-  def chirp_wave(t):
-    return np.cos((0.5 * slope * t + f0) * 2 * np.pi * t)
-
-  return [
-      chirp_wave(t) for t in np.linspace(0, tmax, tmax * sample_rate).tolist()
-  ]
 
 
 def hz2mel(f: float):
