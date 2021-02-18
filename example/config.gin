@@ -1,0 +1,39 @@
+import example.external_configurables
+import example.models
+import leaf_audio.frontend
+
+train.workdir = '/tmp/leaf_audio/'
+train.dataset = 'speech_commands'
+train.num_epochs = 10
+train.learning_rate = 1e-4
+train.batch_size = 64
+
+data.prepare.transform_fns = [@data.align, @data.loudness_normalization]
+loudness_normalization.target_db = 15.0
+loudness_normalization.max_gain_db = 30.0
+align.seq_len = 16000
+
+AudioClassifier.frontend = @Leaf()
+AudioClassifier.encoder = @ConvNet()
+
+ConvNet.filters = [64, 128, 256, 256, 512, 512]
+ConvBlock.activation = 'relu'
+ConvBlock.dropout = 0.1
+
+Leaf.learn_pooling = True
+Leaf.learn_filters = True
+Leaf.conv1d_cls = @tf.keras.layers.Conv1D
+Leaf.activation = @SquaredModulus()
+Leaf.pooling_cls = @pooling.LearnablePooling1D
+Leaf.n_filters = 40
+Leaf.sample_rate = 16000
+Leaf.window_len = 25.0
+Leaf.window_stride = 10.0
+Leaf.compression_fn = @tf.identity
+Leaf.preemp = False
+Leaf.preemp_init = 'glorot_uniform'
+Leaf.complex_conv_init = 'glorot_uniform'
+Leaf.pooling_init = 'glorot_uniform'
+Leaf.regularizer_fn = None
+Leaf.mean_var_norm = False
+Leaf.spec_augment = False
