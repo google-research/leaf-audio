@@ -36,8 +36,7 @@ class Gabor:
     min_freq: minimum frequency spanned by the filters
     max_freq: maximum frequency spanned by the filters
     sample_rate: samplerate (samples/s)
-    window_len: window size in ms
-    window_stride: window stride in ms
+    window_len: window length in samples
     n_fft: number of frequency bins to compute mel-filters
     normalize_energy: boolean, True means that all filters have the same energy,
       False means that the higher the center frequency of a filter, the higher
@@ -49,8 +48,7 @@ class Gabor:
                min_freq: float = 0.,
                max_freq: float = 8000.,
                sample_rate: int = 16000,
-               window_len: float = 25.,
-               window_stride: float = 10.,
+               window_len: int = 401,
                n_fft: int = 512,
                normalize_energy: bool = True):
 
@@ -59,7 +57,6 @@ class Gabor:
     self.max_freq = max_freq
     self.sample_rate = sample_rate
     self.window_len = window_len
-    self.window_stride = window_stride
     self.n_fft = n_fft
     self.normalize_energy = normalize_energy
 
@@ -102,9 +99,8 @@ class Gabor:
   @property
   def gabor_filters(self):
     """Generates gabor filters that match the corresponding mel-filters."""
-    window_size = self.window_len * self.sample_rate / 1000 + 1
     gabor_filters = impulse_responses.gabor_filters(
-        self.gabor_params_from_mels, size=window_size)
+        self.gabor_params_from_mels, size=self.window_len)
     return gabor_filters * tf.cast(
         tf.math.sqrt(
             self._mel_filters_areas(self.mel_filters) * 2 *

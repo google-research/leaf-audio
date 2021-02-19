@@ -73,8 +73,8 @@ class PCENLayer(tf.keras.layers.Layer):
   """
 
   def __init__(self,
-               alpha: float,
-               smooth_coef: float,
+               alpha: float = 0.96,
+               smooth_coef: float = 0.04,
                delta: float = 2.0,
                root: float = 2.0,
                floor: float = 1e-6,

@@ -24,9 +24,13 @@ respectively, the pre-emphasis layer, the main convolution layer, and the
 lowpass filter.
 """
 
+import functools
 import gin
+from leaf_audio import convolution
+from leaf_audio import initializers
 from leaf_audio import pooling
 from leaf_audio import postprocessing
+from leaf_audio import utils
 import tensorflow.compat.v2 as tf
 import tensorflow_addons as tfa
 
@@ -73,33 +77,42 @@ class SquaredModulus(tf.keras.layers.Layer):
 class Leaf(tf.keras.models.Model):
   """Keras layer that implements time-domain filterbanks.
 
-  Creates time-domain filterbanks, a learnable front-end that takes an audio
+  Creates a LEAF frontend, a learnable front-end that takes an audio
   waveform as input and outputs a learnable spectral representation. This layer
   can be initialized to replicate the computation of standard mel-filterbanks.
-  A detailed technical description is presented in Section 2 of
-  https://openreview.net/forum?id=jM76BCb6F9m.
+  A detailed technical description is presented in Section 3 of
+  https://arxiv.org/abs/2101.08596 .
 
   """
 
   def __init__(self,
                learn_pooling: bool = True,
                learn_filters: bool = True,
-               conv1d_cls=tf.keras.layers.Conv1D,
+               conv1d_cls=convolution.GaborConv1D,
                activation=SquaredModulus(),
-               pooling_cls=pooling.LearnablePooling1D,
+               pooling_cls=pooling.GaussianLowpass,
                n_filters: int = 40,
                sample_rate: int = 16000,
                window_len: float = 25.,
                window_stride: float = 10.,
-               compression_fn=tf.identity,
+               compression_fn=postprocessing.PCENLayer(
+                   alpha=0.96,
+                   smooth_coef=0.04,
+                   delta=2.0,
+                   floor=1e-12,
+                   trainable=True,
+                   learn_smooth_coef=True,
+                   per_channel_smooth_coef=True),
                preemp: bool = False,
-               preemp_init: str = 'glorot_uniform',
-               complex_conv_init: str = 'glorot_uniform',
-               pooling_init: str = 'glorot_uniform',
+               preemp_init=initializers.PreempInit(),
+               complex_conv_init=initializers.GaborInit(
+                   sample_rate=16000, min_freq=60.0, max_freq=7800.0),
+               pooling_init=tf.keras.initializers.Constant(0.4),
                regularizer_fn=None,
                mean_var_norm: bool = False,
-               spec_augment: bool = False):
-    super().__init__(name='tfbanks')
+               spec_augment: bool = False,
+               name='leaf'):
+    super().__init__(name=name)
     window_size = int(sample_rate * window_len // 1000 + 1)
     window_stride = int(sample_rate * window_stride // 1000)
     if preemp:
@@ -169,3 +182,91 @@ class Leaf(tf.keras.models.Model):
     if training:
       outputs = self._spec_augment_fn(outputs)
     return outputs
+
+
+class TimeDomainFilterbanks(Leaf):
+  """Time-Domain Filterbanks frontend.
+
+  See Section 2 of https://arxiv.org/abs/1711.01161 for reference.
+  """
+
+  def __init__(self, name='tfbanks', **kwargs):
+    """Constructor of a SincNet + frontend.
+
+
+    Args:
+      name: name of the layer.
+      **kwargs: Arguments passed to Leaf, except conv1d_cls, complex_conv_init,
+        activation, pooling_cls, pooling_init, compression_fn and name which are
+        already fixed.
+    """
+    n_filters = kwargs['n_filters']
+    sample_rate = kwargs['sample_rate']
+    complex_conv_init = initializers.GaborInit(
+        n_filters=n_filters,
+        sample_rate=sample_rate,
+        min_freq=60.0,
+        max_freq=7800.0)
+    pooling_init = initializers.LowpassInit(
+        sample_rate=sample_rate, window_type=utils.WindowType.SQUARED_HANNING)
+    super().__init__(
+        conv1d_cls=tf.keras.layers.Conv1D,
+        activation=SquaredModulus(),
+        pooling_cls=pooling.LearnablePooling1D,
+        complex_conv_init=complex_conv_init,
+        pooling_init=pooling_init,
+        compression_fn=functools.partial(log_compression, log_offset=1e-5),
+        name=name,
+        **kwargs)
+
+
+class SincNet(Leaf):
+  """SincNet frontend.
+
+  See Section 2 of https://arxiv.org/abs/1808.00158 for reference.
+  """
+
+  def __init__(self, name='sincnet', **kwargs):
+    """Constructor of a SincNet frontend.
+
+    Args:
+      name: name of the layer.
+      **kwargs: Arguments passed to Leaf, except conv1d_cls, complex_conv_init,
+        activation, pooling_cls, compression_fn and name which are already
+        fixed.
+    """
+
+    super().__init__(conv1d_cls=convolution.SincConv1D,
+                     complex_conv_init=initializers.SincInit(),
+                     activation=tf.keras.layers.LeakyReLU(alpha=0.2),
+                     pooling_cls=tf.keras.layers.MaxPooling1D,
+                     compression_fn=tf.keras.layers.LayerNormalization(),
+                     name=name,
+                     **kwargs)
+
+
+class SincNetPlus(Leaf):
+  """SincNet+ frontend.
+
+  It replaces max-pooling with a Gaussian lowpass, and LayerNorm with PCEN.
+  """
+
+  def __init__(self, name='sincnet_plus', **kwargs):
+    """Constructor of a SincNet + frontend.
+
+
+    Args:
+      name: name of the layer.
+      **kwargs: Arguments passed to Leaf, except conv1d_cls, complex_conv_init,
+        activation, pooling_cls, pooling_init, compression_fn and name which are
+        already fixed.
+    """
+    super().__init__(
+        conv1d_cls=convolution.SincConv1D,
+        complex_conv_init=initializers.SincInit(),
+        activation=tf.keras.layers.LeakyReLU(alpha=0.2),
+        pooling_cls=pooling.GaussianLowpass,
+        pooling_init=tf.keras.initializers.Constant(0.4),
+        compression_fn=postprocessing.PCENLayer(),
+        name=name,
+        **kwargs)

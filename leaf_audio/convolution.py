@@ -174,8 +174,7 @@ class GaborConv1D(tf.keras.layers.Layer):
     self._padding = padding
     self._use_bias = use_bias
     self._sort_filters = sort_filters
-    # weights are the concatenation of center frequencies and full-width
-    # at half maximum
+    # Weights are the concatenation of center freqs and inverse bandwidths.
     self._kernel = self.add_weight(
         name='kernel',
         shape=(self._filters, 2),
@@ -273,7 +272,7 @@ class SincConv1D(tf.keras.layers.Layer):
     self._strides = strides
     self._padding = padding
     self._use_bias = use_bias
-    # weights are the concatenation of lower and higher cutoff frequencies
+    # Weights are the concatenation of lower and higher cutoff frequencies.
     self._sample_rate = sample_rate
     self._min_low_hz = min_low_hz
     self._min_band_hz = min_band_hz

@@ -1,39 +1,73 @@
 import example.external_configurables
 import leaf_audio.frontend
 import leaf_audio.models
+import leaf_audio.pooling
+import leaf_audio.postprocessing
 
+# HYPERPARAMETERS
 train.workdir = '/tmp/leaf_audio/'
 train.dataset = 'speech_commands'
 train.num_epochs = 10
 train.learning_rate = 1e-4
 train.batch_size = 64
 
+# AUDIO PRE-PROCESSING
 data.prepare.transform_fns = [@data.align, @data.loudness_normalization]
 loudness_normalization.target_db = 15.0
 loudness_normalization.max_gain_db = 30.0
 align.seq_len = 16000
 
+# PICK YOUR FRONTEND AND ENCODER
 AudioClassifier.frontend = @Leaf()
 AudioClassifier.encoder = @ConvNet()
 
+# ENCODER PARAMETERS
 ConvNet.filters = [64, 128, 256, 256, 512, 512]
 ConvBlock.activation = 'relu'
 ConvBlock.dropout = 0.1
 
+# LEAF PARAMETERS
+n_filters = 40
+sample_rate = 16000
+
 Leaf.learn_pooling = True
 Leaf.learn_filters = True
-Leaf.conv1d_cls = @tf.keras.layers.Conv1D
+Leaf.conv1d_cls = @GaborConv1D
 Leaf.activation = @SquaredModulus()
-Leaf.pooling_cls = @pooling.LearnablePooling1D
-Leaf.n_filters = 40
-Leaf.sample_rate = 16000
+Leaf.pooling_cls = @GaussianLowpass
+Leaf.n_filters = %n_filters
+Leaf.sample_rate = %sample_rate
 Leaf.window_len = 25.0
 Leaf.window_stride = 10.0
-Leaf.compression_fn = @tf.identity
+Leaf.compression_fn = @PCENLayer()
 Leaf.preemp = False
-Leaf.preemp_init = 'glorot_uniform'
-Leaf.complex_conv_init = 'glorot_uniform'
-Leaf.pooling_init = 'glorot_uniform'
 Leaf.regularizer_fn = None
 Leaf.mean_var_norm = False
 Leaf.spec_augment = False
+
+
+# INITIALIZES THE FILTERING LAYER
+Leaf.complex_conv_init = @GaborInit()
+GaborInit.n_filters = %n_filters
+GaborInit.sample_rate = %sample_rate
+GaborInit.min_freq = 60.0
+GaborInit.max_freq = 7800.0
+GaborInit.normalize_energy = False
+
+# INITIALIZES THE POOLING FILTER
+Leaf.pooling_init = @pooling/tf.keras.initializers.Constant
+pooling/tf.keras.initializers.Constant.value = 0.4
+
+# PCEN PARAMETER
+# PCEN
+PCENLayer.alpha = 0.96
+PCENLayer.smooth_coef = 0.04
+PCENLayer.delta = 2.0
+PCENLayer.floor = 1e-12
+PCENLayer.trainable = True
+PCENLayer.learn_smooth_coef = True
+PCENLayer.per_channel_smooth_coef = True
+
+
+
+

@@ -63,13 +63,19 @@ class GaborInit(tf.keras.initializers.Initializer):
 
   If the shape has rank 2, this is a complex convolution with filters only
   parametrized by center frequency and FWHM, so we initialize accordingly.
+  In this case, we define the window len as 401 (default value), as it is not
+  used for initialization.
   """
 
   def __init__(self, **kwargs):
+    kwargs.pop('n_filters', None)
     self._kwargs = kwargs
 
   def __call__(self, shape, dtype=None):
-    gabor_filters = melfilters.Gabor(**self._kwargs)
+    n_filters = shape[0] if len(shape) == 2 else shape[-1]
+    window_len = 401 if len(shape) == 2 else shape[0]
+    gabor_filters = melfilters.Gabor(
+        n_filters=n_filters, window_len=window_len, **self._kwargs)
     if len(shape) == 2:
       return gabor_filters.gabor_params_from_mels
     else:
