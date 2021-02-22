@@ -48,7 +48,7 @@ def preprocess(inputs: Mapping[str, tf.Tensor],
   audio = tf.cast(inputs['audio'], tf.float32) / tf.int16.max
   for transform_fn in transform_fns:
     audio = transform_fn(audio)
-  return audio[:, None], inputs['label']
+  return audio, inputs['label']
 
 
 @gin.configurable

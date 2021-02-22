@@ -25,6 +25,8 @@ lowpass filter.
 """
 
 import functools
+from typing import Callable, Optional
+
 import gin
 from leaf_audio import convolution
 from leaf_audio import initializers
@@ -35,13 +37,16 @@ import tensorflow.compat.v2 as tf
 import tensorflow_addons as tfa
 
 
+_TensorCallable = Callable[[tf.Tensor], tf.Tensor]
+_Initializer = tf.keras.initializers.Initializer
+
 gin.external_configurable(tf.keras.regularizers.l1_l2,
                           module='tf.keras.regularizers')
 
 
 @gin.configurable
 def log_compression(inputs: tf.Tensor,
-                    log_offset: float = 0.01) -> tf.Tensor:
+                    log_offset: float = 1e-5) -> tf.Tensor:
   """Compress an inputs tensor with using a logarithm."""
   return tf.math.log(inputs + log_offset)
 
@@ -85,33 +90,34 @@ class Leaf(tf.keras.models.Model):
 
   """
 
-  def __init__(self,
-               learn_pooling: bool = True,
-               learn_filters: bool = True,
-               conv1d_cls=convolution.GaborConv1D,
-               activation=SquaredModulus(),
-               pooling_cls=pooling.GaussianLowpass,
-               n_filters: int = 40,
-               sample_rate: int = 16000,
-               window_len: float = 25.,
-               window_stride: float = 10.,
-               compression_fn=postprocessing.PCENLayer(
-                   alpha=0.96,
-                   smooth_coef=0.04,
-                   delta=2.0,
-                   floor=1e-12,
-                   trainable=True,
-                   learn_smooth_coef=True,
-                   per_channel_smooth_coef=True),
-               preemp: bool = False,
-               preemp_init=initializers.PreempInit(),
-               complex_conv_init=initializers.GaborInit(
-                   sample_rate=16000, min_freq=60.0, max_freq=7800.0),
-               pooling_init=tf.keras.initializers.Constant(0.4),
-               regularizer_fn=None,
-               mean_var_norm: bool = False,
-               spec_augment: bool = False,
-               name='leaf'):
+  def __init__(
+      self,
+      learn_pooling: bool = True,
+      learn_filters: bool = True,
+      conv1d_cls=convolution.GaborConv1D,
+      activation=SquaredModulus(),
+      pooling_cls=pooling.GaussianLowpass,
+      n_filters: int = 40,
+      sample_rate: int = 16000,
+      window_len: float = 25.,
+      window_stride: float = 10.,
+      compression_fn: _TensorCallable = postprocessing.PCENLayer(
+          alpha=0.96,
+          smooth_coef=0.04,
+          delta=2.0,
+          floor=1e-12,
+          trainable=True,
+          learn_smooth_coef=True,
+          per_channel_smooth_coef=True),
+      preemp: bool = False,
+      preemp_init: _Initializer = initializers.PreempInit(),
+      complex_conv_init: _Initializer = initializers.GaborInit(
+          sample_rate=16000, min_freq=60.0, max_freq=7800.0),
+      pooling_init: _Initializer = tf.keras.initializers.Constant(0.4),
+      regularizer_fn: Optional[tf.keras.regularizers.Regularizer] = None,
+      mean_var_norm: bool = False,
+      spec_augment: bool = False,
+      name='leaf'):
     super().__init__(name=name)
     window_size = int(sample_rate * window_len // 1000 + 1)
     window_stride = int(sample_rate * window_stride // 1000)
@@ -167,7 +173,17 @@ class Leaf(tf.keras.models.Model):
 
     self._preemp = preemp
 
-  def call(self, inputs: tf.Tensor, training: bool = False):
+  def call(self, inputs: tf.Tensor, training: bool = False) -> tf.Tensor:
+    """Computes the Leaf representation of a batch of waveforms.
+
+    Args:
+      inputs: input audio of shape (batch_size, num_samples) or (batch_size,
+        num_samples, 1).
+      training: training mode, controls whether SpecAugment is applied or not.
+
+    Returns:
+      Leaf features of shape (batch_size, time_frames, freq_bins).
+    """
     # Inputs should be [B, W] or [B, W, C]
     outputs = inputs[:, :, tf.newaxis] if inputs.shape.ndims < 3 else inputs
     if self._preemp:
@@ -184,6 +200,7 @@ class Leaf(tf.keras.models.Model):
     return outputs
 
 
+@gin.configurable
 class TimeDomainFilterbanks(Leaf):
   """Time-Domain Filterbanks frontend.
 
@@ -220,6 +237,7 @@ class TimeDomainFilterbanks(Leaf):
         **kwargs)
 
 
+@gin.configurable
 class SincNet(Leaf):
   """SincNet frontend.
 
@@ -245,6 +263,7 @@ class SincNet(Leaf):
                      **kwargs)
 
 
+@gin.configurable
 class SincNetPlus(Leaf):
   """SincNet+ frontend.
 
@@ -270,3 +289,72 @@ class SincNetPlus(Leaf):
         compression_fn=postprocessing.PCENLayer(),
         name=name,
         **kwargs)
+
+
+@gin.configurable
+class MelFilterbanks(tf.keras.layers.Layer):
+  """Computes mel-filterbanks."""
+
+  def __init__(self,
+               n_filters: int = 40,
+               sample_rate: int = 16000,
+               n_fft: int = 512,
+               window_len: float = 25.,
+               window_stride: float = 10.,
+               compression_fn: _TensorCallable = log_compression,
+               min_freq: float = 60.0,
+               max_freq: float = 7800.0,
+               **kwargs):
+    """Constructor of a MelFilterbanks frontend.
+
+    Args:
+      n_filters: the number of mel_filters.
+      sample_rate: sampling rate of input waveforms, in samples.
+      n_fft: number of frequency bins of the spectrogram.
+      window_len: size of the window, in seconds.
+      window_stride: stride of the window, in seconds.
+      compression_fn: a callable, the compression function to use.
+      min_freq: minimum frequency spanned by mel-filters (in Hz).
+      max_freq: maximum frequency spanned by mel-filters (in Hz).
+      **kwargs: other arguments passed to the base class, e.g. name.
+    """
+
+    super().__init__(**kwargs)
+
+    self._n_filters = n_filters
+    self._sample_rate = sample_rate
+    self._n_fft = n_fft
+    self._window_len = int(sample_rate * window_len // 1000 + 1)
+    self._window_stride = int(sample_rate * window_stride // 1000)
+    self._compression_fn = compression_fn
+    self._min_freq = min_freq
+    self._max_freq = max_freq if max_freq else sample_rate / 2.
+
+    self.mel_filters = tf.signal.linear_to_mel_weight_matrix(
+        num_mel_bins=self._n_filters,
+        num_spectrogram_bins=self._n_fft // 2 + 1,
+        sample_rate=self._sample_rate,
+        lower_edge_hertz=self._min_freq,
+        upper_edge_hertz=self._max_freq)
+
+  def call(self, inputs: tf.Tensor) -> tf.Tensor:
+    """Computes mel-filterbanks of a batch of waveforms.
+
+    Args:
+      inputs: input audio of shape (batch_size, num_samples).
+
+    Returns:
+      Mel-filterbanks of shape (batch_size, time_frames, freq_bins).
+    """
+    stft = tf.signal.stft(
+        inputs,
+        frame_length=self._window_len,
+        frame_step=self._window_stride,
+        fft_length=self._n_fft,
+        pad_end=True)
+
+    spectrogram = tf.math.square(tf.math.abs(stft))
+
+    mel_filterbanks = tf.matmul(spectrogram, self.mel_filters)
+    mel_filterbanks = self._compression_fn(mel_filterbanks)
+    return mel_filterbanks

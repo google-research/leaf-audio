@@ -18,7 +18,7 @@ loudness_normalization.max_gain_db = 30.0
 align.seq_len = 16000
 
 # PICK YOUR FRONTEND AND ENCODER
-AudioClassifier.frontend = @Leaf()
+AudioClassifier.frontend = @MelFilterbanks()
 AudioClassifier.encoder = @ConvNet()
 
 # ENCODER PARAMETERS
