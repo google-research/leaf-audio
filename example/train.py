@@ -16,6 +16,7 @@
 """Training loop using the LEAF frontend."""
 
 import os
+from typing import Optional
 
 import gin
 from leaf_audio import models
@@ -28,6 +29,7 @@ import tensorflow_datasets as tfds
 def train(workdir: str = '/tmp/',
           dataset: str = 'speech_commands',
           num_epochs: int = 10,
+          steps_per_epoch: Optional[int] = None,
           learning_rate: float = 1e-4,
           batch_size: int = 64,
           **kwargs):
@@ -37,6 +39,8 @@ def train(workdir: str = '/tmp/',
     workdir: where to store the checkpoints and metrics.
     dataset: name of a tensorflow_datasets audio datasset.
     num_epochs: number of epochs to training the model for.
+    steps_per_epoch: number of steps that define an epoch. If None, an epoch is
+      a pass over the entire training set.
     learning_rate: Adam's learning rate.
     batch_size: size of the mini-batches.
     **kwargs: arguments to the models.AudioClassifier class, namely the encoder
@@ -64,4 +68,5 @@ def train(workdir: str = '/tmp/',
             validation_data=datasets['eval'],
             batch_size=None,
             epochs=num_epochs,
+            steps_per_epoch=steps_per_epoch,
             callbacks=[model_checkpoint_callback])

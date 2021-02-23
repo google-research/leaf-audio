@@ -72,7 +72,7 @@ class GaborInit(tf.keras.initializers.Initializer):
     self._kwargs = kwargs
 
   def __call__(self, shape, dtype=None):
-    n_filters = shape[0] if len(shape) == 2 else shape[-1]
+    n_filters = shape[0] if len(shape) == 2 else shape[-1] // 2
     window_len = 401 if len(shape) == 2 else shape[0]
     gabor_filters = melfilters.Gabor(
         n_filters=n_filters, window_len=window_len, **self._kwargs)

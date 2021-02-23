@@ -66,9 +66,6 @@ class PCENLayer(tf.keras.layers.Layer):
 
   This applies a fixed or learnable normalization by an exponential moving
   average smoother, and a compression.
-  This implementation replicates the computation of fixed_pcen and
-  trainable_pcen defined in
-  google3/audio/hearing/tts/tensorflow/python/ops/pcen_ops.py.
   See https://arxiv.org/abs/1607.05666 for more details.
   """
 
@@ -97,7 +94,7 @@ class PCENLayer(tf.keras.layers.Layer):
         coefficient
       name: str, name of the layer
     """
-    super().__init__()
+    super().__init__(name=name)
     self._alpha_init = alpha
     self._delta_init = delta
     self._root_init = root

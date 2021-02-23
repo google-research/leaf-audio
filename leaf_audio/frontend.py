@@ -207,20 +207,18 @@ class TimeDomainFilterbanks(Leaf):
   See Section 2 of https://arxiv.org/abs/1711.01161 for reference.
   """
 
-  def __init__(self, name='tfbanks', **kwargs):
+  def __init__(self, sample_rate=16000, name='tfbanks', **kwargs):
     """Constructor of a SincNet + frontend.
 
 
     Args:
+      sample_rate: audio sampling rate.
       name: name of the layer.
       **kwargs: Arguments passed to Leaf, except conv1d_cls, complex_conv_init,
-        activation, pooling_cls, pooling_init, compression_fn and name which are
-        already fixed.
+        activation, pooling_cls, pooling_init, compression_fn,
+        sample_rate and name which are already fixed.
     """
-    n_filters = kwargs['n_filters']
-    sample_rate = kwargs['sample_rate']
     complex_conv_init = initializers.GaborInit(
-        n_filters=n_filters,
         sample_rate=sample_rate,
         min_freq=60.0,
         max_freq=7800.0)
@@ -257,7 +255,7 @@ class SincNet(Leaf):
     super().__init__(conv1d_cls=convolution.SincConv1D,
                      complex_conv_init=initializers.SincInit(),
                      activation=tf.keras.layers.LeakyReLU(alpha=0.2),
-                     pooling_cls=tf.keras.layers.MaxPooling1D,
+                     pooling_cls=pooling.MaxPooling1D,
                      compression_fn=tf.keras.layers.LayerNormalization(),
                      name=name,
                      **kwargs)

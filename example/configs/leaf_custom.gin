@@ -1,0 +1,21 @@
+include 'example/configs/leaf.gin'
+
+AudioClassifier.frontend = @Leaf()
+
+# CHANGE THE COMPRESSION FROM PCEN TO LOG
+
+Leaf.compression_fn = @log_compression
+
+# REPLACE THE ENCODER WITH PANN
+
+AudioClassifier.encoder = @PANN()
+PANN.depth = 7
+PANN.dropout_rate = 0.3
+
+# ADD SPEC AUGMENT
+
+Leaf.spec_augment = True
+
+# SPECIFY SOME SPECAUGMENT PARAMETERS
+SpecAugment.freq_mask_max_bins = 8
+SpecAugment.time_mask_count = 2
