@@ -110,7 +110,8 @@ def gaussian_lowpass(sigma: tf.Tensor, filter_size: int):
   Returns:
     A tf.Tensor<float>[1, filter_size, C, 1].
   """
-  sigma = tf.clip_by_value(sigma, clip_value_min=0., clip_value_max=0.5)
+  sigma = tf.clip_by_value(
+      sigma, clip_value_min=(2. / filter_size), clip_value_max=0.5)
   t = tf.range(0, filter_size, dtype=tf.float32)
   t = tf.reshape(t, (1, filter_size, 1, 1))
   numerator = t - 0.5 * (filter_size - 1)
