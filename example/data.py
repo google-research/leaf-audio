@@ -22,6 +22,9 @@ import gin
 import tensorflow as tf
 
 
+AUTOTUNE = tf.data.experimental.AUTOTUNE
+
+
 def db_to_linear(samples):
   return 10.0 ** (samples / 20.0)
 
@@ -61,6 +64,6 @@ def prepare(datasets: Mapping[str, tf.data.Dataset],
   for split, key in ('train', 'train'), (valid, 'eval'):
     ds = datasets[split]
     ds = ds.map(functools.partial(preprocess, transform_fns=transform_fns),
-                num_parallel_calls=tf.data.AUTOTUNE)
-    result[key] = ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+                num_parallel_calls=AUTOTUNE)
+    result[key] = ds.batch(batch_size).prefetch(AUTOTUNE)
   return result
