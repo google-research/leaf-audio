@@ -50,7 +50,7 @@ class Gabor:
                sample_rate: int = 16000,
                window_len: int = 401,
                n_fft: int = 512,
-               normalize_energy: bool = True):
+               normalize_energy: bool = False):
 
     self.n_filters = n_filters
     self.min_freq = min_freq
@@ -92,9 +92,10 @@ class Gabor:
         sample_rate=self.sample_rate,
         lower_edge_hertz=self.min_freq,
         upper_edge_hertz=self.max_freq)
+    mel_filters = tf.transpose(mel_filters, [1, 0])
     if self.normalize_energy:
       mel_filters = mel_filters / self._mel_filters_areas(mel_filters)
-    return tf.transpose(mel_filters, [1, 0])
+    return mel_filters
 
   @property
   def gabor_filters(self):

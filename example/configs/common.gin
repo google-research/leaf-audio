@@ -1,3 +1,5 @@
+# -*-Python-*-
+
 import example.external_configurables
 import leaf_audio.frontend
 import leaf_audio.models
