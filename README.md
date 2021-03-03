@@ -1,6 +1,6 @@
 # LEAF: a LEarnable Audio Frontend
 
-![Overview](./images/frontends.png)
+![Overview](./leaf_audio/images/frontends.png)
 
 LEAF is a learnable alternative to audio features such as mel-filterbanks, that can be initialized as an approximation of mel-filterbanks, and then be trained for the task at hand, while using a very small
 number of parameters.
@@ -61,7 +61,7 @@ sincnet_representation = sincnet(audio_sample)
 sincnet_plus_representation = sincnet_plus(audio_sample)
 ```
 
-![Frontends output](./images/frontends_output.png)
+![Frontends output](./leaf_audio/images/frontends_output.png)
 
 ## Customizing the frontend architecture
 
