@@ -78,7 +78,7 @@ by using:
 * log-compression instead of PCEN,
 * a non-learnable pooling layer.
 
-As the initialization depends on the learning rate, we also need to redefine
+As the initialization depends on the sampling rate, we also need to redefine
 `complex_conv_init`.
 
 ```python
