@@ -190,7 +190,6 @@ class SpecAugment(tf.keras.layers.Layer):
     paddings = tf.zeros((batch_size, num_time_bins))
     outputs = tf.expand_dims(inputs, axis=[3])
     outputs = self.spec_augment_layer._AugmentationNetwork(  # pylint: disable=protected-access
-        series_length=num_time_bins,
         inputs=outputs,
         paddings=paddings,
         global_seed=777)

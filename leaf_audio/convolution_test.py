@@ -33,10 +33,11 @@ class ConvTest(parameterized.TestCase, tf.test.TestCase):
     filters = tf.random.normal(shape=(filter_len, 1, num_filters))
 
     target = tf.nn.convolution(inputs, filters, padding='SAME')
-    outputs = convolution.fft_conv1d(inputs, filters)
+    outputs, filters_l1 = convolution.fft_conv1d(inputs, filters)
 
     self.assertEqual(outputs.shape, target.shape)
     self.assertEqual(outputs.shape, (batch_size, seq_len, num_filters))
+    self.assertEqual(filters_l1.shape, ())
 
     k = filter_len // 2
     self.assertAllClose(outputs[:, k:-k, :], target[:, k:-k, :], atol=0.01)

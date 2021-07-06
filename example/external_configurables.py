@@ -56,6 +56,9 @@ configurables = {
         tf.keras.applications.MobileNetV2,
         tf.keras.applications.ResNet50,
     ),
+    'tf.keras.initializers': (
+        tf.keras.initializers.Constant,
+    )
 }
 
 for module in configurables:
