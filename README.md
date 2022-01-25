@@ -22,6 +22,8 @@ This library contains Tensorflow/Keras code for:
 * Keras models for [PANN](https://arxiv.org/abs/1912.10211), [PCEN](https://research.google/pubs/pub45911/) and [SpecAugment](https://arxiv.org/abs/1904.08779)
 * an example training loop using gin, to train models with various frontends and architectures on tensorflow datasets.
 
+Looking for a PyTorch version? Check this [repo](https://github.com/SarthakYadav/leaf-pytorch) (not managed by google-research).
+
 ## Installation
 From the root directory of the repo, run:
 
