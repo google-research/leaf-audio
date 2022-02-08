@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 Google LLC.
+# Copyright 2022 Google LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -339,11 +339,17 @@ class MelFilterbanks(tf.keras.layers.Layer):
     """Computes mel-filterbanks of a batch of waveforms.
 
     Args:
-      inputs: input audio of shape (batch_size, num_samples).
+      inputs: input audio of shape (batch_size, num_samples) or (batch_size,
+        num_samples, 1).
 
     Returns:
       Mel-filterbanks of shape (batch_size, time_frames, freq_bins).
     """
+    if inputs.shape.ndims == 3:
+      if inputs.shape[-1] != 1:
+        raise ValueError('Only one channel supported but got inputs'
+                         f' with shape {inputs.shape}')
+      inputs = tf.squeeze(inputs, axis=-1)
     stft = tf.signal.stft(
         inputs,
         frame_length=self._window_len,
